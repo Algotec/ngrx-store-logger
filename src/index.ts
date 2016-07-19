@@ -98,6 +98,7 @@ export const storeLogger = (opts : Object = {}) => (reducer : Function) => {
 
     const defaults = {
         level : `log`,
+        enableFilter:()=>true,
         collapsed : false,
         duration : true,
         timestamp : true,
@@ -117,24 +118,28 @@ export const storeLogger = (opts : Object = {}) => (reducer : Function) => {
     const buffer = printBuffer(options);
 
     return function(state, action) {
-        let preLog = {
-            started: timer.now(),
-            startedTime: new Date(),
-            prevState: stateTransformer(log),
-            action
-        };
+        let preLog,enabled = options.enableFilter();
+        if (enabled){
+            preLog = {
+                started    : timer.now(),
+                startedTime: new Date(),
+                prevState  : stateTransformer(log),
+                action
+            };
+        }
 
         let nextState = reducer(state, action);
-
-        let postLog = {
-            took: timer.now() - preLog.started,
-            nextState: stateTransformer(nextState)
-        };
-        log = Object.assign({}, preLog, postLog);
-        //ignore init action fired by store and devtools
-        if(action.type !== INIT_ACTION) {
-            buffer([log]);
-        }
+	    if (enabled) {
+		    let postLog = {
+			    took     : timer.now() - preLog.started,
+			    nextState: stateTransformer(nextState)
+		    };
+		    log = Object.assign({}, preLog, postLog);
+		    //ignore init action fired by store and devtools
+		    if (action.type !== INIT_ACTION) {
+			    buffer([log]);
+		    }
+	    }
 
         return nextState;
     }
